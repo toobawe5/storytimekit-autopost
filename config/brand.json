@@ -1,0 +1,19 @@
+{
+  "shop_name": "StorytimeKit",
+  "end_card_line": "StorytimeKit on Etsy",
+  "end_card_cta": "Link in bio",
+  "colors": {
+    "night": "#2B3A67",
+    "cream": "#FFF6E5",
+    "moon": "#F6C667",
+    "caption_bg": "#FFF6E5",
+    "caption_text": "#2B3A67"
+  },
+  "fonts": {
+    "bold": "assets/fonts/Poppins-Bold.ttf",
+    "regular": "assets/fonts/Poppins-Regular.ttf"
+  },
+  "music": "assets/music.mp3",
+  "music_volume": 0.6,
+  "video_seconds": 30
+}

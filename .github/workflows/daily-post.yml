@@ -1,0 +1,77 @@
+name: Daily post
+
+on:
+  schedule:
+    # Checks every hour; config/schedule.json decides when a post actually goes out.
+    - cron: "7 * * * *"
+  workflow_dispatch:
+    inputs:
+      item:
+        description: "Post id from content/queue.json (leave empty = whatever is due now)"
+        required: false
+        default: ""
+      mode:
+        description: "review = make the video only, live = make it and post it"
+        required: true
+        default: "review"
+        type: choice
+        options: [review, live]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Is anything due?
+        id: due
+        run: python src/due.py --item "${{ github.event.inputs.item }}"
+
+      - name: Install video tools
+        if: steps.due.outputs.item != ''
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg > /dev/null
+          pip install -q -r requirements.txt
+
+      - name: Make video and post
+        if: steps.due.outputs.item != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLATFORMS: ${{ vars.PLATFORMS }}
+          META_PAGE_TOKEN: ${{ secrets.META_PAGE_TOKEN }}
+          META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          PINTEREST_APP_ID: ${{ secrets.PINTEREST_APP_ID }}
+          PINTEREST_APP_SECRET: ${{ secrets.PINTEREST_APP_SECRET }}
+          PINTEREST_REFRESH_TOKEN: ${{ secrets.PINTEREST_REFRESH_TOKEN }}
+          PINTEREST_DEFAULT_BOARD_ID: ${{ vars.PINTEREST_DEFAULT_BOARD_ID }}
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          if [ -z "$MODE" ]; then MODE="${{ vars.POST_MODE }}"; fi
+          if [ -z "$MODE" ]; then MODE="review"; fi
+          cd src && python run.py --item "${{ steps.due.outputs.item }}" --slot "${{ steps.due.outputs.slot }}" --mode "$MODE"
+
+      - name: Save posting log
+        if: always() && steps.due.outputs.item != ''
+        run: |
+          git config user.name "storytimekit-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/posted.json
+          git diff --cached --quiet || git commit -m "Log post ${{ steps.due.outputs.item }}"
+          git pull --rebase -q && git push -q

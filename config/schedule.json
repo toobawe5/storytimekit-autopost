@@ -1,0 +1,8 @@
+{
+  "timezone": "Asia/Karachi",
+  "late_limit_hours": 3,
+  "slots": {
+    "first": "06:00",
+    "second": "18:00"
+  }
+}
